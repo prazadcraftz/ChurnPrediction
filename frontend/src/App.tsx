@@ -13,6 +13,8 @@ import { useActiveSection } from './hooks/useActiveSection';
 import { mockAnalysisResult } from './mock/mockAnalysisResult';
 import type { AnalysisResult, ColumnMapping, CSVPreview } from './types/analysis';
 
+import { parseFileToPreview, analyzeDatasetClientSide } from './utils/clientAnalysisEngine';
+
 // ── Lazy-load heavy chart / table sections to reduce main bundle size ──
 const ChurnDriversSection  = lazy(() => import('./components/dashboard/ChurnDriversSection').then(m => ({ default: m.ChurnDriversSection })));
 const SegmentRiskTable     = lazy(() => import('./components/dashboard/SegmentRiskTable').then(m => ({ default: m.SegmentRiskTable })));
@@ -70,7 +72,7 @@ export function App() {
   // ── Session Restore on Mount ──
   useEffect(() => {
     const savedSession = sessionStorage.getItem(SESSION_KEY);
-    if (!savedSession) return;
+    if (!savedSession || !API_BASE) return;
 
     fetch(`${API_BASE}/api/results/${savedSession}`)
       .then((r) => r.ok ? r.json() : null)
@@ -87,25 +89,47 @@ export function App() {
   const handleFileSelect = (file: File) => setSelectedFile(file);
 
   const handleUseSampleData = async () => {
-    try {
-      const res = await fetch(`${API_BASE}/api/sample-data`);
-      if (res.ok) setAnalysisData(await res.json());
-      else setAnalysisData(mockAnalysisResult);
-    } catch {
-      setAnalysisData(mockAnalysisResult);
+    if (API_BASE) {
+      try {
+        const res = await fetch(`${API_BASE}/api/sample-data`);
+        if (res.ok) {
+          setAnalysisData(await res.json());
+          setAppState('processing');
+          return;
+        }
+      } catch {
+        // fallback to client mock
+      }
     }
+    setAnalysisData(mockAnalysisResult);
     setAppState('processing');
   };
 
   const handleStartAnalysis = async () => {
     if (selectedFile) {
-      try {
-        const formData = new FormData();
-        formData.append('file', selectedFile);
-        const res = await fetch(`${API_BASE}/api/upload-validate`, { method: 'POST', body: formData });
-        if (res.ok) setCsvPreview(await res.json());
-      } catch (e) {
-        console.warn('Backend validation call fallback:', e);
+      let previewLoaded = false;
+      if (API_BASE) {
+        try {
+          const formData = new FormData();
+          formData.append('file', selectedFile);
+          const res = await fetch(`${API_BASE}/api/upload-validate`, { method: 'POST', body: formData });
+          if (res.ok) {
+            setCsvPreview(await res.json());
+            previewLoaded = true;
+          }
+        } catch (e) {
+          console.warn('Backend validation call fallback:', e);
+        }
+      }
+
+      // If backend is not running or failed (e.g. Vercel deployment), parse file in browser
+      if (!previewLoaded) {
+        try {
+          const preview = await parseFileToPreview(selectedFile);
+          setCsvPreview(preview);
+        } catch (e) {
+          console.warn('In-browser preview parse fallback:', e);
+        }
       }
     }
     setAppState('mapping');
@@ -115,32 +139,39 @@ export function App() {
     setAppState('processing');
     if (!selectedFile) return;
 
-    const formData = new FormData();
-    formData.append('file', selectedFile);
-    formData.append('mapping', JSON.stringify(mapping));
-
-    // Attach sheet_name if user selected one (set by ColumnMappingModal as _selected_sheet)
     const mappingAny = mapping as ColumnMapping & { _selected_sheet?: string };
-    if (mappingAny._selected_sheet) formData.append('sheet_name', mappingAny._selected_sheet);
+    const sheetName = mappingAny._selected_sheet;
 
-    try {
-      const res = await fetch(`${API_BASE}/api/analyze`, { method: 'POST', body: formData });
+    // 1. Try remote FastAPI backend if API_BASE is configured
+    if (API_BASE) {
+      try {
+        const formData = new FormData();
+        formData.append('file', selectedFile);
+        formData.append('mapping', JSON.stringify(mapping));
+        if (sheetName) formData.append('sheet_name', sheetName);
 
-      if (!res.ok) {
-        const errJson = await res.json().catch(() => ({ detail: `HTTP ${res.status}` }));
-        throw new Error(errJson.detail ?? `HTTP ${res.status}`);
+        const res = await fetch(`${API_BASE}/api/analyze`, { method: 'POST', body: formData });
+        if (res.ok) {
+          const result: AnalysisResult = await res.json();
+          setAnalysisData(result);
+          setSelectedFilters({});
+          if (result.session_id) {
+            sessionStorage.setItem(SESSION_KEY, result.session_id);
+          }
+          return;
+        }
+      } catch (err) {
+        console.warn('Remote backend unavailable, falling back to in-browser engine:', err);
       }
+    }
 
-      const result: AnalysisResult = await res.json();
+    // 2. In-Browser Client-Side Engine (Always works on Vercel without backend server)
+    try {
+      const result = await analyzeDatasetClientSide(selectedFile, mapping, sheetName);
       setAnalysisData(result);
       setSelectedFilters({});
-
-      // Persist session ID for page-refresh restore
-      if (result.session_id) {
-        sessionStorage.setItem(SESSION_KEY, result.session_id);
-      }
     } catch (err) {
-      const msg = err instanceof Error ? err.message : 'Unknown error';
+      const msg = err instanceof Error ? err.message : 'Analysis failed';
       setErrorMessage(msg);
       setAppState('error');
     }

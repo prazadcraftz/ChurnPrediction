@@ -1,0 +1,12 @@
+{
+  "name": "churn-analysis-app",
+  "version": "1.0.0",
+  "private": true,
+  "description": "Automated Customer Churn & Retention Intelligence Dashboard",
+  "scripts": {
+    "dev": "npm run dev --prefix frontend",
+    "build": "npm run build --prefix frontend",
+    "preview": "npm run preview --prefix frontend",
+    "test": "npm test --prefix frontend"
+  }
+}

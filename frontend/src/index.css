@@ -1,0 +1,91 @@
+@import "tailwindcss";
+
+@theme {
+  --color-iris-gleam: #847dff;
+  --color-cyan-signal: #00b3dd;
+  --color-pale-iris: #d1c9ff;
+  --color-deep-iris: #4b49aa;
+  --color-orchid-bloom: #dd90d8;
+  --color-periwinkle: #90b8f0;
+  --color-obsidian: #0f1011;
+  --color-abyss: #090a0b;
+  --color-graphite: #2e2e2e;
+  --color-steel: #3f4041;
+  --color-silver: #cacaca;
+  --color-fog: #6a6b6b;
+  --color-ash: #9f9fa0;
+  --color-cloud: #f5f5f7;
+  --color-pure: #ffffff;
+  --color-void: #000000;
+
+  --font-serif-display: 'DM Serif Display', serif;
+  --font-sans-ui: 'Inter', system-ui, sans-serif;
+  --font-mono-data: 'Roboto Mono', monospace;
+
+  --radius-cards: 16px;
+  --radius-inputs: 8px;
+  --radius-buttons: 8px;
+  --radius-navitems: 8px;
+  --radius-statblocks: 16px;
+  --radius-pillbuttons: 9999px;
+  --radius-featurecards: 30px;
+  --radius-categorytiles: 30px;
+}
+
+:root {
+  --color-obsidian: #0f1011;
+  --color-abyss: #090a0b;
+  --color-graphite: #2e2e2e;
+  --color-steel: #3f4041;
+  --color-silver: #cacaca;
+  --color-fog: #6a6b6b;
+  --color-ash: #9f9fa0;
+  --color-cloud: #f5f5f7;
+  --color-pure: #ffffff;
+  --color-void: #000000;
+  --color-iris-gleam: #847dff;
+  --color-cyan-signal: #00b3dd;
+}
+
+body {
+  margin: 0;
+  background-color: #0f1011;
+  color: #f5f5f7;
+  font-family: 'Inter', system-ui, sans-serif;
+  -webkit-font-smoothing: antialiased;
+}
+
+/* Custom scrollbar for dark gallery aesthetic */
+::-webkit-scrollbar {
+  width: 8px;
+  height: 8px;
+}
+::-webkit-scrollbar-track {
+  background: #0f1011;
+}
+::-webkit-scrollbar-thumb {
+  background: #2e2e2e;
+  border-radius: 4px;
+}
+::-webkit-scrollbar-thumb:hover {
+  background: #3f4041;
+}
+
+.font-serif-display {
+  font-family: 'DM Serif Display', serif;
+}
+
+.font-mono-data {
+  font-family: 'Roboto Mono', monospace;
+}
+
+.font-sans-ui {
+  font-family: 'Inter', system-ui, sans-serif;
+}
+
+/* Skeleton shimmer animation */
+@keyframes shimmer {
+  0%   { transform: translateX(-100%); }
+  100% { transform: translateX(200%); }
+}
+
